@@ -46,7 +46,7 @@ class ScalarFunction:
                 raw_vals.append(v.data)
             else:
                 scalars.append(minitorch.scalar.Scalar(v))
-                raw_vals.append(v)
+                raw_vals.append(float(v))
 
         # Create the context.
         ctx = Context(False)
@@ -89,4 +89,93 @@ class Log(ScalarFunction):
 
 # To implement.
 
+class Mul(ScalarFunction):
+    @staticmethod
+    def forward(ctx: Context, a: float, b: float) -> float:
+        ctx.save_for_backward(a, b)
+        return operators.mul(a, b)
 
+    @staticmethod
+    def backward(ctx: Context, d_output: float) -> Tuple[float, float]:
+        a, b = ctx.saved_values
+        return operators.mul(b, d_output), operators.mul(a, d_output)
+
+
+class Inv(ScalarFunction):
+    @staticmethod
+    def forward(ctx: Context, a: float) -> float:
+        ctx.save_for_backward(a)
+        return operators.inv(a)
+
+    @staticmethod
+    def backward(ctx: Context, d_output: float) -> float:
+        (a,) = ctx.saved_values
+        return operators.inv_back(a, d_output)
+
+
+class Neg(ScalarFunction):
+    @staticmethod
+    def forward(ctx: Context, a: float) -> float:
+        return operators.neg(a)
+
+    @staticmethod
+    def backward(ctx: Context, d_output: float) -> float:
+        return operators.neg(d_output)
+
+
+class Sigmoid(ScalarFunction):
+    @staticmethod
+    def forward(ctx: Context, a: float) -> float:
+        result = operators.sigmoid(a)
+        ctx.save_for_backward(result)
+        return result
+
+    @staticmethod
+    def backward(ctx: Context, d_output: float) -> float:
+        (result,) = ctx.saved_values
+        return result * (1.0 - result) * d_output
+
+
+class ReLU(ScalarFunction):
+    @staticmethod
+    def forward(ctx: Context, a: float) -> float:
+        ctx.save_for_backward(a)
+        return operators.relu(a)
+
+    @staticmethod
+    def backward(ctx: Context, d_output: float) -> float:
+        (a,) = ctx.saved_values
+        return operators.relu_back(a, d_output)
+
+
+class Exp(ScalarFunction):
+    @staticmethod
+    def forward(ctx: Context, a: float) -> float:
+        result = operators.exp(a)
+        ctx.save_for_backward(result)
+        return result
+
+    @staticmethod
+    def backward(ctx: Context, d_output: float) -> float:
+        (result,) = ctx.saved_values
+        return result * d_output
+
+
+class LT(ScalarFunction):
+    @staticmethod
+    def forward(ctx: Context, a: float, b: float) -> float:
+        return operators.lt(a, b)
+
+    @staticmethod
+    def backward(ctx: Context, d_output: float) -> Tuple[float, float]:
+        return 0.0, 0.0
+
+
+class EQ(ScalarFunction):
+    @staticmethod
+    def forward(ctx: Context, a: float, b: float) -> float:
+        return operators.eq(a, b)
+
+    @staticmethod
+    def backward(ctx: Context, d_output: float) -> Tuple[float, float]:
+        return 0.0, 0.0

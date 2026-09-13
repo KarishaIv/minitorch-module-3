@@ -44,7 +44,11 @@ def index_to_position(index: Index, strides: Strides) -> int:
         Position in storage
 
     """
-    raise NotImplementedError("Need to include this file from past assignment.")
+
+    position = 0
+    for i in range(len(strides)):
+        position += int(index[i]) * int(strides[i])
+    return position
 
 
 def to_index(ordinal: int, shape: Shape, out_index: OutIndex) -> None:
@@ -59,7 +63,10 @@ def to_index(ordinal: int, shape: Shape, out_index: OutIndex) -> None:
         out_index : return index corresponding to position.
 
     """
-    raise NotImplementedError("Need to include this file from past assignment.")
+    stride = 1
+    for i in range(len(shape) - 1, -1, -1):
+        out_index[i] = (ordinal // stride) % int(shape[i])
+        stride *= int(shape[i])
 
 
 def broadcast_index(
@@ -81,7 +88,12 @@ def broadcast_index(
         None
 
     """
-    raise NotImplementedError("Need to include this file from past assignment.")
+    offset = len(big_shape) - len(shape)
+    for i in range(len(shape)):
+        if shape[i] == 1:
+            out_index[i] = 0
+        else:
+            out_index[i] = big_index[i + offset]
 
 
 def shape_broadcast(shape1: UserShape, shape2: UserShape) -> UserShape:
@@ -98,7 +110,15 @@ def shape_broadcast(shape1: UserShape, shape2: UserShape) -> UserShape:
         IndexingError : if cannot broadcast
 
     """
-    raise NotImplementedError("Need to include this file from past assignment.")
+    out = []
+    length = max(len(shape1), len(shape2))
+    for i in range(1, length + 1):
+        a = shape1[-i] if i <= len(shape1) else 1
+        b = shape2[-i] if i <= len(shape2) else 1
+        if a != b and a != 1 and b != 1:
+            raise IndexingError(f"Cannot broadcast {shape1} and {shape2}")
+        out.append(max(a, b))
+    return tuple(reversed(out))
 
 
 def strides_from_shape(shape: UserShape) -> UserStrides:
@@ -147,7 +167,12 @@ class TensorData:
 
     def to_cuda_(self) -> None:  # pragma: no cover
         """Convert to cuda"""
-        if not numba.cuda.is_cuda_array(self._storage):
+        is_cuda_array = getattr(numba.cuda, "is_cuda_array", None)
+        if is_cuda_array is None:
+            is_cuda = hasattr(self._storage, "__cuda_ndarray__")
+        else:
+            is_cuda = is_cuda_array(self._storage)
+        if not is_cuda:
             self._storage = numba.cuda.to_device(self._storage)
 
     def is_contiguous(self) -> bool:
@@ -227,7 +252,9 @@ class TensorData:
             range(len(self.shape))
         ), f"Must give a position to each dimension. Shape: {self.shape} Order: {order}"
 
-        raise NotImplementedError("Need to include this file from past assignment.")
+        shape = tuple(self.shape[i] for i in order)
+        strides = tuple(self.strides[i] for i in order)
+        return TensorData(self._storage, shape, strides)
 
     def to_string(self) -> str:
         """Convert to string"""
